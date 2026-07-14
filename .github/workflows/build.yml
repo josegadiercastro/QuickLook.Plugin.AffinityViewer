@@ -1,0 +1,60 @@
+name: Build QuickLook.Plugin.AffinityViewer
+
+# Se ejecuta automáticamente al hacer push, y también se puede lanzar a mano
+# desde la pestaña "Actions" del repo con el botón "Run workflow".
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    # WPF + interop COM con Windows Shell: requiere sí o sí un runner Windows.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout de este plugin
+        uses: actions/checkout@v4
+
+      - name: Clonar QL-Win/QuickLook (necesario para QuickLook.Common)
+        run: git clone --depth 1 https://github.com/QL-Win/QuickLook.git external/QuickLook
+
+      - name: Instalar .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurar dependencias
+        run: dotnet restore QuickLook.Plugin.AffinityViewer/QuickLook.Plugin.AffinityViewer.csproj
+
+      - name: Compilar (Release)
+        run: >
+          dotnet build QuickLook.Plugin.AffinityViewer/QuickLook.Plugin.AffinityViewer.csproj
+          -c Release
+          -o build_output
+
+      - name: Empaquetar como .qlplugin
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build_output\* -DestinationPath dist\QuickLook.Plugin.AffinityViewer.zip -Force
+          Rename-Item dist\QuickLook.Plugin.AffinityViewer.zip QuickLook.Plugin.AffinityViewer.qlplugin
+
+      # Descarga siempre disponible en la pestaña "Actions" -> este workflow run -> "Artifacts"
+      - name: Publicar como artifact descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickLook.Plugin.AffinityViewer
+          path: dist/QuickLook.Plugin.AffinityViewer.qlplugin
+          if-no-files-found: error
+
+      # Si además publicas un Release en GitHub (Releases -> Draft a new release),
+      # este paso adjunta automáticamente el .qlplugin al Release para tener un
+      # enlace de descarga permanente y estable.
+      - name: Adjuntar al Release (si el workflow se disparó por un Release)
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/QuickLook.Plugin.AffinityViewer.qlplugin

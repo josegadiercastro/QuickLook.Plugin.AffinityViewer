@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- QuickLook (rama master actual) compila sus plugins contra .NET 8 + WPF. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>QuickLook.Plugin.AffinityViewer</AssemblyName>
+    <RootNamespace>QuickLook.Plugin.AffinityViewer</RootNamespace>
+    <Platforms>AnyCPU;x86;x64</Platforms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Metadatos que aparecen en el instalador de plugins de QuickLook -->
+    <Version>1.0.0</Version>
+    <Product>Affinity Viewer for QuickLook</Product>
+    <Description>Previsualiza archivos .afphoto, .afdesign y .afpub (Affinity Photo/Designer/Publisher) en QuickLook.</Description>
+    <Company>Community Plugin</Company>
+    <Copyright>Copyright © 2026</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Esta ruta coincide con lo que hace .github/workflows/build.yml:
+      clona QL-Win/QuickLook (que contiene QuickLook.Common) dentro de
+      "external/QuickLook" en la raíz del repo, junto a esta carpeta.
+      Si compilas en local con otra estructura de carpetas, ajusta la ruta
+      o usa la alternativa con <Reference>/<HintPath> de más abajo.
+    -->
+    <ProjectReference Include="..\external\QuickLook\QuickLook.Common\QuickLook.Common.csproj">
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!--
+    Alternativa sin clonar el repo: descomenta esto y borra el ProjectReference
+    de arriba, apuntando al QuickLook.Common.dll que ya tienes instalado, p.ej.:
+    C:\Program Files\QuickLook\QuickLook.Common.dll
+  -->
+  <!--
+  <ItemGroup>
+    <Reference Include="QuickLook.Common">
+      <HintPath>C:\Program Files\QuickLook\QuickLook.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  -->
+
+  <!-- Copia automáticamente el plugin compilado a la carpeta de plugins de QuickLook para pruebas en caliente -->
+  <Target Name="CopyToQuickLookPluginFolder" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <ItemGroup>
+      <PluginOutputFiles Include="$(OutDir)**\*.*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(PluginOutputFiles)"
+      DestinationFolder="$(LocalAppData)\QuickLook\QuickLook.Plugin.AffinityViewer\%(RecursiveDir)"
+      SkipUnchangedFiles="true"
+      ContinueOnError="true" />
+  </Target>
+
+</Project>
